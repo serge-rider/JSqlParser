@@ -49,7 +49,7 @@ html_theme_options = {
     "show_breadcrumbs": True,
     "footer_text": "All rights reserved.",
     "show_powered_by": True,
-    "repo_url": "https://github.com/JSQLParser/JSqlParse",
+    "repo_url": "https://github.com/JSQLParser/JSqlParser",
     "repo_name": "GitHub",
     "landing_page": "",
     "collapse_navigation": True,
