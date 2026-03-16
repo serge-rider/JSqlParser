@@ -11,7 +11,6 @@ buildscript {
 
 plugins {
     id 'java'
-    id "com.vanniktech.maven.publish" version "latest.release"
     id 'maven-publish'
     id 'signing'
 
@@ -63,17 +62,16 @@ def getVersion = { boolean considerSnapshot ->
         snapshot = "-SNAPSHOT"
     }
 
-    return "${major}.${minor}" +
-            (patch != null ? ".${patch}" : "") +
-            (build != null ? ".${build}" : "") +
-            snapshot
+    return patch != null
+            ? "${major}.${minor}.${patch}${snapshot}"
+            : "${major}.${minor}${snapshot}"
 }
 
 
 // for publishing a release, call Gradle with Environment Variable RELEASE:
 // RELEASE=true gradle JSQLParser:publish
 version = getVersion( !System.getenv("RELEASE") )
-group = 'com.manticore-projects.jsqlformatter'
+group = 'com.github.jsqlparser'
 description = 'JSQLParser library'
 
 tasks.register('generateBuildInfo') {
@@ -150,16 +148,19 @@ dependencies {
     testImplementation 'commons-io:commons-io:2.+'
     testImplementation 'org.apache.commons:commons-text:+'
     testImplementation 'org.mockito:mockito-core:+'
-    testImplementation 'org.assertj:assertj-core:3.+'
+    testImplementation 'org.assertj:assertj-core:+'
     testImplementation 'org.hamcrest:hamcrest-core:+'
     testImplementation 'org.apache.commons:commons-lang3:+'
     testImplementation 'com.h2database:h2:+'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.4'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.4'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.18.0'
 
+    // for JaCoCo Reports
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.4'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.4'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.4'
+
+    // https://mvnrepository.com/artifact/org.mockito/mockito-junit-jupiter
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.18.0'
 
     // Performance Benchmark
     testImplementation 'org.openjdk.jmh:jmh-core:+'
@@ -178,9 +179,11 @@ dependencies {
     javacc('org.javacc.generator:java:8.1.0-SNAPSHOT') { changing = true }
 }
 configurations.configureEach {
-    // Cache SNAPSHOT/changing modules for javacc for 30 seconds so updates are picked up quickly
-    resolutionStrategy {
-        cacheChangingModulesFor 30, 'seconds'
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group in ['org.javacc:core', 'org.javacc.generator']) {
+            // Check for updates every build
+            resolutionStrategy.cacheChangingModulesFor 30, 'seconds'
+        }
     }
 }
 
@@ -196,6 +199,9 @@ compileJavacc {
 }
 
 java {
+    withSourcesJar()
+    withJavadocJar()
+
     sourceCompatibility = '11'
     targetCompatibility = '11'
 
@@ -603,56 +609,89 @@ tasks.register('sphinx', Exec) {
     }
 }
 
-mavenPublishing {
-    publishToMavenCentral(true)
-    signAllPublications()
+publish {
+    dependsOn(check, gitChangelogTask, renderRR, xslt, xmldoc)
+}
 
-    coordinates(group, "jsqlparser", version)
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'jsqlparser'
 
-    pom {
-        name.set('JSQLParser library')
-        description.set('Parse SQL Statements into Abstract Syntax Trees (AST)')
-        url.set('https://github.com/JSQLParser/JSqlParser')
+            from components.java
 
-        licenses {
-            license {
-                name.set('GNU Library or Lesser General Public License (LGPL) V2.1')
-                url.set('http://www.gnu.org/licenses/lgpl-2.1.html')
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
             }
-            license {
-                name.set('The Apache Software License, Version 2.0')
-                url.set('http://www.apache.org/licenses/LICENSE-2.0.txt')
+
+            pom {
+                name.set('JSQLParser library')
+                description.set('Parse SQL Statements into Abstract Syntax Trees (AST)')
+                url.set('https://github.com/JSQLParser/JSqlParser')
+
+                licenses {
+                    license {
+                        name.set('GNU Library or Lesser General Public License (LGPL) V2.1')
+                        url.set('http://www.gnu.org/licenses/lgpl-2.1.html')
+                    }
+                    license {
+                        name.set('The Apache Software License, Version 2.0')
+                        url.set('http://www.apache.org/licenses/LICENSE-2.0.txt')
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set('twa')
+                        name.set('Tobias Warneke')
+                        email.set('t.warneke@gmx.net')
+                    }
+                    developer {
+                        id.set('are')
+                        name.set('Andreas Reichel')
+                        email.set('andreas@manticore-projects.com')
+                    }
+                }
+
+                scm {
+                    connection.set('scm:git:https://github.com/JSQLParser/JSqlParser.git')
+                    developerConnection.set('scm:git:ssh://git@github.com:JSQLParser/JSqlParser.git')
+                    url.set('https://github.com/JSQLParser/JSqlParser.git')
+                }
             }
         }
+    }
 
-        developers {
-            developer {
-                id.set('twa')
-                name.set('Tobias Warneke')
-                email.set('t.warneke@gmx.net')
-            }
-            developer {
-                id.set('are')
-                name.set('Andreas Reichel')
-                email.set('andreas@manticore-projects.com')
-            }
-        }
+    repositories {
+        maven {
+            name = "ossrh"
+            def releasesRepoUrl = "https://central.sonatype.com/repository/maven-releases"
+            def snapshotsRepoUrl = "https://central.sonatype.com/repository/maven-snapshots/"
+            url(version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl)
 
-        scm {
-            connection.set('scm:git:https://github.com/JSQLParser/JSqlParser.git')
-            developerConnection.set('scm:git:ssh://git@github.com:JSQLParser/JSqlParser.git')
-            url.set('https://github.com/JSQLParser/JSqlParser.git')
+            credentials {
+                username = providers.environmentVariable("ossrhUsername").orNull
+                password = providers.environmentVariable("ossrhPassword").orNull
+            }
         }
     }
 }
 
-// Fix signing task dependencies
-tasks.withType(AbstractPublishToMaven).configureEach {
-    dependsOn(tasks.withType(Sign))
-}
 
 signing {
-    required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") }
+    //def signingKey = findProperty("signingKey")
+    //def signingPassword = findProperty("signingPassword")
+    //useInMemoryPgpKeys(signingKey, signingPassword)
+
+    // don't sign SNAPSHOTS
+    if (!version.endsWith('SNAPSHOT')) {
+        sign publishing.publications.mavenJava
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
