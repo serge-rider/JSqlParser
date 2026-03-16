@@ -33,24 +33,24 @@ htmlhelp_basename = "JSQLParser" + "-doc"
 html_use_index = True
 html_show_sourcelink = False
 html_static_path = ["_static"]
-html_logo = "_images/logo-no-background.svg"
-html_favicon = "_images/favicon.svg"
+html_logo = "logo-no-background.svg"
+html_favicon = "favicon.svg"
 html_css_files = ["svg.css"]
 
 html_theme_options = {
-    "logo": "_images/logo-no-background.svg",
+    "logo": "logo-no-background.svg",
     "logo_alt": "JSQL Parser",
-    "favicon": "_images/favicon.svg",
+    "favicon": "favicon.svg",
     "color_primary": "#0063db",
     "color_accent": "#d90000",
     "color_sidebar_bg": "#f5f6fa",
     "color_sidebar_text": "#2d2d48",
-    "navigation_depth": 2,
+    "navigation_depth": 1,
     "show_breadcrumbs": True,
     "footer_text": "All rights reserved.",
     "show_powered_by": True,
     "repo_url": "https://github.com/JSQLParser/JSqlParse",
     "repo_name": "GitHub",
-    "landing_page": "index",
+    "landing_page": "",
     "collapse_navigation": True,
 }
