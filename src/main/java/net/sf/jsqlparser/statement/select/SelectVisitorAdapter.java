@@ -138,6 +138,18 @@ public class SelectVisitorAdapter<T> implements SelectVisitor<T> {
             selectItem.accept(selectItemVisitor, context);
         }
 
+        if (plainSelect.getMySqlSelectIntoClause() != null) {
+            MySqlSelectIntoClause mySqlSelectIntoClause = plainSelect.getMySqlSelectIntoClause();
+            expressionVisitor.visitExpression(mySqlSelectIntoClause.getFileName(), context);
+            expressionVisitor.visitExpression(mySqlSelectIntoClause.getFieldsTerminatedBy(),
+                    context);
+            expressionVisitor.visitExpression(mySqlSelectIntoClause.getFieldsEnclosedBy(), context);
+            expressionVisitor.visitExpression(mySqlSelectIntoClause.getFieldsEscapedBy(), context);
+            expressionVisitor.visitExpression(mySqlSelectIntoClause.getLinesStartingBy(), context);
+            expressionVisitor.visitExpression(mySqlSelectIntoClause.getLinesTerminatedBy(),
+                    context);
+        }
+
         fromItemVisitor.visitTables(plainSelect.getIntoTables(), context);
         fromItemVisitor.visitFromItem(plainSelect.getFromItem(), context);
 

@@ -54,6 +54,7 @@ import net.sf.jsqlparser.statement.select.FromItemVisitor;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.LateralSubSelect;
 import net.sf.jsqlparser.statement.select.LateralView;
+import net.sf.jsqlparser.statement.select.MySqlSelectIntoClause;
 import net.sf.jsqlparser.statement.select.Offset;
 import net.sf.jsqlparser.statement.select.OptimizeFor;
 import net.sf.jsqlparser.statement.select.OrderByElement;
@@ -250,6 +251,12 @@ public class SelectDeParser extends AbstractDeParser<PlainSelect>
             }
         }
 
+        if (plainSelect.getMySqlSelectIntoClause() != null
+                && plainSelect.getMySqlSelectIntoClause()
+                        .getPosition() == MySqlSelectIntoClause.Position.BEFORE_FROM) {
+            builder.append(" ").append(plainSelect.getMySqlSelectIntoClause());
+        }
+
         if (plainSelect.getFromItem() != null) {
             builder.append(" FROM ");
             if (plainSelect.isUsingOnly()) {
@@ -368,6 +375,11 @@ public class SelectDeParser extends AbstractDeParser<PlainSelect>
             } else if (plainSelect.isSkipLocked()) {
                 builder.append(" SKIP LOCKED");
             }
+        }
+        if (plainSelect.getMySqlSelectIntoClause() != null
+                && plainSelect.getMySqlSelectIntoClause()
+                        .getPosition() == MySqlSelectIntoClause.Position.TRAILING) {
+            builder.append(" ").append(plainSelect.getMySqlSelectIntoClause());
         }
         if (plainSelect.getSettings() != null && !plainSelect.getSettings().isEmpty()) {
             builder.append(" SETTINGS ");

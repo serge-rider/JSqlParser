@@ -34,6 +34,7 @@ public class PlainSelect extends Select {
     private BigQuerySelectQualifier bigQuerySelectQualifier = null;
     private List<SelectItem<?>> selectItems;
     private List<Table> intoTables;
+    private MySqlSelectIntoClause mySqlSelectIntoClause;
     private FromItem fromItem;
     private List<LateralView> lateralViews;
     private List<Join> joins;
@@ -140,6 +141,14 @@ public class PlainSelect extends Select {
 
     public void setIntoTables(List<Table> intoTables) {
         this.intoTables = intoTables;
+    }
+
+    public MySqlSelectIntoClause getMySqlSelectIntoClause() {
+        return mySqlSelectIntoClause;
+    }
+
+    public void setMySqlSelectIntoClause(MySqlSelectIntoClause mySqlSelectIntoClause) {
+        this.mySqlSelectIntoClause = mySqlSelectIntoClause;
     }
 
     public List<SelectItem<?>> getSelectItems() {
@@ -564,6 +573,12 @@ public class PlainSelect extends Select {
             }
         }
 
+        if (mySqlSelectIntoClause != null
+                && mySqlSelectIntoClause
+                        .getPosition() == MySqlSelectIntoClause.Position.BEFORE_FROM) {
+            builder.append(" ").append(mySqlSelectIntoClause);
+        }
+
         if (fromItem != null) {
             builder.append(" FROM ");
             if (isUsingOnly) {
@@ -646,6 +661,11 @@ public class PlainSelect extends Select {
         StringBuilder builder = new StringBuilder();
         super.appendTo(builder);
 
+        if (mySqlSelectIntoClause != null
+                && mySqlSelectIntoClause.getPosition() == MySqlSelectIntoClause.Position.TRAILING) {
+            builder.append(" ").append(mySqlSelectIntoClause);
+        }
+
         if (settings != null && !settings.isEmpty()) {
             builder.append(" SETTINGS ");
             UpdateSet.appendUpdateSetsTo(builder, settings);
@@ -695,6 +715,11 @@ public class PlainSelect extends Select {
 
     public PlainSelect withIntoTables(List<Table> intoTables) {
         this.setIntoTables(intoTables);
+        return this;
+    }
+
+    public PlainSelect withMySqlSelectIntoClause(MySqlSelectIntoClause mySqlSelectIntoClause) {
+        this.setMySqlSelectIntoClause(mySqlSelectIntoClause);
         return this;
     }
 

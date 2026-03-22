@@ -10,7 +10,6 @@
 package net.sf.jsqlparser.util.validation.validator;
 
 import java.util.List;
-
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.MySQLIndexHint;
 import net.sf.jsqlparser.expression.SQLServerHints;
@@ -26,6 +25,7 @@ import net.sf.jsqlparser.statement.select.IntersectOp;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.LateralSubSelect;
 import net.sf.jsqlparser.statement.select.MinusOp;
+import net.sf.jsqlparser.statement.select.MySqlSelectIntoClause;
 import net.sf.jsqlparser.statement.select.Offset;
 import net.sf.jsqlparser.statement.select.ParenthesedFromItem;
 import net.sf.jsqlparser.statement.select.ParenthesedSelect;
@@ -122,6 +122,8 @@ public class SelectValidator extends AbstractValidator<SelectItem<?>>
         validateOptionalExpression(plainSelect.getPreWhere());
         validateOptionalExpression(plainSelect.getWhere());
         validateOptionalExpression(plainSelect.getOracleHierarchical());
+        validateOptional(plainSelect.getMySqlSelectIntoClause(),
+                this::validateMySqlSelectIntoClause);
 
         if (plainSelect.getGroupBy() != null) {
             plainSelect.getGroupBy().accept(getValidator(GroupByValidator.class), context);
@@ -145,6 +147,15 @@ public class SelectValidator extends AbstractValidator<SelectItem<?>>
         validateOptional(plainSelect.getPivot(), p -> p.accept(this, context));
 
         return null;
+    }
+
+    private void validateMySqlSelectIntoClause(MySqlSelectIntoClause mySqlSelectIntoClause) {
+        validateOptionalExpression(mySqlSelectIntoClause.getFileName());
+        validateOptionalExpression(mySqlSelectIntoClause.getFieldsTerminatedBy());
+        validateOptionalExpression(mySqlSelectIntoClause.getFieldsEnclosedBy());
+        validateOptionalExpression(mySqlSelectIntoClause.getFieldsEscapedBy());
+        validateOptionalExpression(mySqlSelectIntoClause.getLinesStartingBy());
+        validateOptionalExpression(mySqlSelectIntoClause.getLinesTerminatedBy());
     }
 
     @Override

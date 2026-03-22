@@ -3223,6 +3223,57 @@ public class SelectTest {
     }
 
     @Test
+    public void testMySqlSelectIntoOutfileBeforeFrom() throws JSQLParserException {
+        String stmt = "SELECT a, b INTO OUTFILE '/tmp/result.txt' "
+                + "FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' "
+                + "LINES TERMINATED BY '\\n' FROM test_table";
+        Select select = (Select) assertSqlCanBeParsedAndDeparsed(stmt, true);
+        MySqlSelectIntoClause intoClause = select.getPlainSelect().getMySqlSelectIntoClause();
+        assertNotNull(intoClause);
+        assertEquals(MySqlSelectIntoClause.Position.BEFORE_FROM, intoClause.getPosition());
+        assertEquals(MySqlSelectIntoClause.Type.OUTFILE, intoClause.getType());
+        assertEquals("'/tmp/result.txt'", intoClause.getFileName().toString());
+        assertEquals("','", intoClause.getFieldsTerminatedBy().toString());
+        assertTrue(intoClause.isFieldsOptionallyEnclosed());
+        assertEquals("'\"'", intoClause.getFieldsEnclosedBy().toString());
+        assertEquals("'\\n'", intoClause.getLinesTerminatedBy().toString());
+    }
+
+    @Test
+    public void testMySqlSelectIntoOutfileTrailing() throws JSQLParserException {
+        String stmt = "SELECT * FROM users INTO OUTFILE '/tmp/users.csv' "
+                + "FIELDS TERMINATED BY ',' ENCLOSED BY '\"' "
+                + "LINES TERMINATED BY '\\n'";
+        Select select = (Select) assertSqlCanBeParsedAndDeparsed(stmt, true);
+        MySqlSelectIntoClause intoClause = select.getPlainSelect().getMySqlSelectIntoClause();
+        assertNotNull(intoClause);
+        assertEquals(MySqlSelectIntoClause.Position.TRAILING, intoClause.getPosition());
+        assertEquals(MySqlSelectIntoClause.Type.OUTFILE, intoClause.getType());
+        assertEquals("'/tmp/users.csv'", intoClause.getFileName().toString());
+        assertEquals("'\"'", intoClause.getFieldsEnclosedBy().toString());
+        assertEquals("'\\n'", intoClause.getLinesTerminatedBy().toString());
+    }
+
+    @Test
+    public void testMySqlSelectIntoDumpfileTrailing() throws JSQLParserException {
+        String stmt = "SELECT id FROM users INTO DUMPFILE '/tmp/users.dump'";
+        Select select = (Select) assertSqlCanBeParsedAndDeparsed(stmt, true);
+        MySqlSelectIntoClause intoClause = select.getPlainSelect().getMySqlSelectIntoClause();
+        assertNotNull(intoClause);
+        assertEquals(MySqlSelectIntoClause.Position.TRAILING, intoClause.getPosition());
+        assertEquals(MySqlSelectIntoClause.Type.DUMPFILE, intoClause.getType());
+        assertEquals("'/tmp/users.dump'", intoClause.getFileName().toString());
+    }
+
+    @Test
+    public void testMySqlSelectIntoOutfileRejectsFieldsAfterLines() {
+        String stmt = "SELECT * FROM users INTO OUTFILE '/tmp/users.csv' "
+                + "LINES TERMINATED BY '\\n' FIELDS TERMINATED BY ','";
+        Assertions.assertThrows(JSQLParserException.class,
+                () -> CCJSqlParserUtil.parse(stmt));
+    }
+
+    @Test
     public void testSelectForUpdate() throws JSQLParserException {
         assertSqlCanBeParsedAndDeparsed("SELECT * FROM user_table FOR UPDATE");
     }

@@ -854,13 +854,16 @@ String NonReservedWord() :
       | tk=<K_DRIVER:"DRIVER">
       | tk=<K_DROP:"DROP">
       | tk=<K_DUMP:"DUMP">
+      | tk=<K_DUMPFILE:"DUMPFILE">
       | tk=<K_DUPLICATE: "DUPLICATE">
       | tk=<K_ELEMENTS: "ELEMENTS">
+      | tk=<K_ENCLOSED: "ENCLOSED">
       | tk=<K_EMIT: "EMIT">
       | tk=<K_ENABLE: "ENABLE">
       | tk=<K_ENCODING: "ENCODING">
       | tk=<K_ENCRYPTION: "ENCRYPTION">
       | tk=<K_END: "END">
+      | tk=<K_ESCAPED: "ESCAPED">
       | tk=<K_ENFORCED: "ENFORCED">
       | tk=<K_ENGINE: "ENGINE">
       | tk=<K_ERROR: "ERROR">
@@ -879,6 +882,7 @@ String NonReservedWord() :
       | tk=<K_EXPORT:"EXPORT">
       | tk=<K_ISOLATION:("UR" | "RS" | "RR" | "CS")>
       | tk=<K_FILTER: "FILTER">
+      | tk=<K_FIELDS: "FIELDS">
       | tk=<K_FIRST: "FIRST">
       | tk=<K_FLUSH: "FLUSH">
       | tk=<K_FOLLOWING: "FOLLOWING">
@@ -924,6 +928,7 @@ String NonReservedWord() :
       | tk=<K_LEADING:"LEADING">
       | tk=<K_LESS:"LESS">
       | tk=<K_LEVEL:"LEVEL">
+      | tk=<K_LINES:"LINES">
       | tk=<K_LOCAL:"LOCAL">
       | tk=<K_LOCK:"LOCK">
       | tk=<K_LOCKED:"LOCKED">
@@ -970,9 +975,11 @@ String NonReservedWord() :
       | tk=<K_NOWAIT: "NOWAIT">
       | tk=<K_OF:"OF">
       | tk=<K_OFF:"OFF">
+      | tk=<K_OPTIONALLY:"OPTIONALLY">
       | tk=<K_OPEN:"OPEN">
       | tk=<K_ORA: "ORA">
       | tk=<K_ORDINALITY:"ORDINALITY">
+      | tk=<K_OUTFILE:"OUTFILE">
       | tk=<K_OVER:"OVER">
       | tk=<K_OVERFLOW:"OVERFLOW">
       | tk=<K_OVERLAPS:"OVERLAPS">
@@ -1050,6 +1057,7 @@ String NonReservedWord() :
       | tk=<K_SIZE:"SIZE">
       | tk=<K_SKIP: "SKIP">
       | tk=<K_SPATIAL:"SPATIAL">
+      | tk=<K_STARTING:"STARTING">
       | tk=<K_STORED: "STORED">
       | tk=<K_STREAM: "STREAM">
       | tk=<K_STRICT: "STRICT">
@@ -1066,6 +1074,7 @@ String NonReservedWord() :
       | tk=<K_SYSTEM_VERSION:"SYSTEM_VERSION">
       | tk=<K_TABLE:"TABLE">
       | tk=<K_TABLESPACE: "TABLESPACE">
+      | tk=<K_TERMINATED:"TERMINATED">
       | tk=<K_TRIGGER: "TRIGGER">
       | tk=<K_THEN:"THEN">
       | tk=<K_TEMP:"TEMP">
@@ -4912,6 +4921,7 @@ PlainSelect PlainSelect() #PlainSelect:
     ExpressionList expressionList = null;
     boolean partitionByBrackets = false;
     List<Table> intoTables = null;
+    MySqlSelectIntoClause mySqlSelectIntoClause = null;
     Table updateTable = null;
     Wait wait = null;
     boolean mySqlSqlCalcFoundRows = false;
@@ -4974,7 +4984,13 @@ PlainSelect PlainSelect() #PlainSelect:
 
     selectItems=SelectItemsList()
 
-    [ LOOKAHEAD(2) intoTables = IntoClause() { plainSelect.setIntoTables(intoTables); } ]
+    [ LOOKAHEAD(<K_INTO> (<K_OUTFILE> | <K_DUMPFILE>))
+        mySqlSelectIntoClause = MySqlSelectIntoClause(MySqlSelectIntoClause.Position.BEFORE_FROM)
+        { plainSelect.setMySqlSelectIntoClause(mySqlSelectIntoClause); }
+    ]
+    [ LOOKAHEAD(<K_INTO>)
+        intoTables = IntoClause() { plainSelect.setIntoTables(intoTables); }
+    ]
     [ LOOKAHEAD(2) <K_FROM> fromItem=FromItem()
         [ LOOKAHEAD(2) lateralViews=LateralViews() ]
         [ LOOKAHEAD(2) joins=JoinsList() ]
@@ -5037,6 +5053,10 @@ PlainSelect PlainSelect() #PlainSelect:
         [ LOOKAHEAD(<K_WAIT>) wait = Wait() { plainSelect.setWait(wait); } ]
         [ LOOKAHEAD(2) (<K_NOWAIT> { plainSelect.setNoWait(true); }
                | <K_SKIP> <K_LOCKED> { plainSelect.setSkipLocked(true); }) ]
+    ]
+    [ LOOKAHEAD(<K_INTO> (<K_OUTFILE> | <K_DUMPFILE>))
+        mySqlSelectIntoClause = MySqlSelectIntoClause(MySqlSelectIntoClause.Position.TRAILING)
+        { plainSelect.setMySqlSelectIntoClause(mySqlSelectIntoClause); }
     ]
     [ LOOKAHEAD(2) <K_SETTINGS> settings = UpdateSets() { plainSelect.setSettings(settings); } ]
     [ LOOKAHEAD(<K_OPTIMIZE>) optimize = OptimizeFor() { plainSelect.setOptimizeFor(optimize); } ]
@@ -5627,6 +5647,128 @@ List<Table> IntoClause():
     {
         return tables;
     }
+}
+
+MySqlSelectIntoClause MySqlSelectIntoClause(MySqlSelectIntoClause.Position position):
+{
+    MySqlSelectIntoClause intoClause = new MySqlSelectIntoClause().withPosition(position);
+    Token token;
+}
+{
+    <K_INTO>
+    (
+          <K_OUTFILE> { intoClause.setType(MySqlSelectIntoClause.Type.OUTFILE); }
+          token=<S_CHAR_LITERAL> { intoClause.setFileName(new StringValue(token.image)); }
+          MySqlSelectIntoOutfileTail(intoClause)
+        |
+          <K_DUMPFILE> { intoClause.setType(MySqlSelectIntoClause.Type.DUMPFILE); }
+          token=<S_CHAR_LITERAL> { intoClause.setFileName(new StringValue(token.image)); }
+    )
+    {
+        return intoClause;
+    }
+}
+
+void MySqlSelectIntoOutfileTail(MySqlSelectIntoClause intoClause):
+{
+    Token token;
+}
+{
+    (
+          LOOKAHEAD(<K_CHARACTER> <K_SET>)
+          <K_CHARACTER> <K_SET>
+          (token=<S_IDENTIFIER> | token=<K_BINARY>)
+          { intoClause.setCharacterSet(token.image); }
+          (
+                LOOKAHEAD((<K_FIELDS> | <K_COLUMNS>))
+                MySqlSelectIntoFieldsClause(intoClause)
+                [ LOOKAHEAD(<K_LINES>) MySqlSelectIntoLinesClause(intoClause) ]
+              |
+                LOOKAHEAD(<K_LINES>)
+                MySqlSelectIntoLinesClause(intoClause)
+              |
+                { }
+          )
+        |
+          LOOKAHEAD((<K_FIELDS> | <K_COLUMNS>))
+          MySqlSelectIntoFieldsClause(intoClause)
+          [ LOOKAHEAD(<K_LINES>) MySqlSelectIntoLinesClause(intoClause) ]
+        |
+          LOOKAHEAD(<K_LINES>)
+          MySqlSelectIntoLinesClause(intoClause)
+        |
+          { }
+    )
+}
+
+void MySqlSelectIntoFieldsClause(MySqlSelectIntoClause intoClause):
+{
+    Token token;
+}
+{
+    (
+          <K_FIELDS> { intoClause.setFieldsKeyword(MySqlSelectIntoClause.FieldsKeyword.FIELDS); }
+        | <K_COLUMNS> { intoClause.setFieldsKeyword(MySqlSelectIntoClause.FieldsKeyword.COLUMNS); }
+    )
+    (
+          LOOKAHEAD(<K_TERMINATED> <K_BY>)
+          <K_TERMINATED> <K_BY> token=<S_CHAR_LITERAL>
+          { intoClause.setFieldsTerminatedBy(new StringValue(token.image)); }
+          (
+                LOOKAHEAD((<K_OPTIONALLY> | <K_ENCLOSED>))
+                [ <K_OPTIONALLY> { intoClause.setFieldsOptionallyEnclosed(true); } ]
+                <K_ENCLOSED> <K_BY> token=<S_CHAR_LITERAL>
+                { intoClause.setFieldsEnclosedBy(new StringValue(token.image)); }
+                [ LOOKAHEAD(<K_ESCAPED> <K_BY>)
+                    <K_ESCAPED> <K_BY> token=<S_CHAR_LITERAL>
+                    { intoClause.setFieldsEscapedBy(new StringValue(token.image)); }
+                ]
+              |
+                LOOKAHEAD(<K_ESCAPED> <K_BY>)
+                <K_ESCAPED> <K_BY> token=<S_CHAR_LITERAL>
+                { intoClause.setFieldsEscapedBy(new StringValue(token.image)); }
+              |
+                { }
+          )
+        |
+          LOOKAHEAD((<K_OPTIONALLY> | <K_ENCLOSED>))
+          [ <K_OPTIONALLY> { intoClause.setFieldsOptionallyEnclosed(true); } ]
+          <K_ENCLOSED> <K_BY> token=<S_CHAR_LITERAL>
+          { intoClause.setFieldsEnclosedBy(new StringValue(token.image)); }
+          [ LOOKAHEAD(<K_ESCAPED> <K_BY>)
+              <K_ESCAPED> <K_BY> token=<S_CHAR_LITERAL>
+              { intoClause.setFieldsEscapedBy(new StringValue(token.image)); }
+          ]
+        |
+          LOOKAHEAD(<K_ESCAPED> <K_BY>)
+          <K_ESCAPED> <K_BY> token=<S_CHAR_LITERAL>
+          { intoClause.setFieldsEscapedBy(new StringValue(token.image)); }
+        |
+          { }
+    )
+}
+
+void MySqlSelectIntoLinesClause(MySqlSelectIntoClause intoClause):
+{
+    Token token;
+}
+{
+    <K_LINES>
+    (
+          LOOKAHEAD(<K_STARTING> <K_BY>)
+          <K_STARTING> <K_BY> token=<S_CHAR_LITERAL>
+          { intoClause.setLinesStartingBy(new StringValue(token.image)); }
+          [ LOOKAHEAD(<K_TERMINATED> <K_BY>)
+              <K_TERMINATED> <K_BY> token=<S_CHAR_LITERAL>
+              { intoClause.setLinesTerminatedBy(new StringValue(token.image)); }
+          ]
+        |
+          LOOKAHEAD(<K_TERMINATED> <K_BY>)
+          <K_TERMINATED> <K_BY> token=<S_CHAR_LITERAL>
+          { intoClause.setLinesTerminatedBy(new StringValue(token.image)); }
+        |
+          { }
+    )
 }
 
 FromItem ParenthesedFromItem():
