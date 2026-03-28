@@ -16,6 +16,7 @@ extensions = [
     "sphinx_substitution_extensions",
     "sphinx_inline_tabs",
     "pygments.sphinxext",
+    "sphinx_javadoc_xml",
 ]
 
 

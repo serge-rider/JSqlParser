@@ -249,12 +249,6 @@ tasks.register('xmldoc', Javadoc) {
                     : "xmlDoclet/javadoc_stable.xml"
     )
 
-    def rstFile =  reporting.file(
-            version.endsWith("-SNAPSHOT")
-                    ? "xmlDoclet/javadoc_snapshot.rst"
-                    : "xmlDoclet/javadoc_stable.rst"
-    )
-
     source = sourceSets.main.allJava
     // add any generated Java sources
     source += fileTree(layout.buildDirectory.dir("generated/javacc").get().asFile) {
@@ -271,16 +265,12 @@ tasks.register('xmldoc', Javadoc) {
     options.doclet = "com.manticore.tools.xmldoclet.XmlDoclet"
     title = "API $version"
 
-    options.addBooleanOption("rst", true)
-    if (Boolean.parseBoolean(System.getProperty("FLOATING_TOC", "true"))) {
-        options.addBooleanOption("withFloatingToc", true)
-    }
     options.addStringOption("basePackage", "net.sf.jsqlparser")
     options.addStringOption("filename", outFile.getName())
 
     doLast {
         copy {
-            from rstFile
+            from outFile
             into layout.projectDirectory.dir("src/site/sphinx/").asFile
         }
     }
