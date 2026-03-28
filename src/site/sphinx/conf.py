@@ -39,9 +39,9 @@ html_favicon = "favicon.svg"
 html_css_files = ["svg.css"]
 
 html_theme_options = {
-    "logo": "logo-no-background.svg",
+    "logo": "_static/logo-no-background.svg",
     "logo_alt": "JSQL Parser",
-    "favicon": "favicon.svg",
+    "favicon": "_static/favicon.svg",
     "color_primary": "#0063db",
     "color_accent": "#d90000",
     "color_sidebar_bg": "#f5f6fa",
