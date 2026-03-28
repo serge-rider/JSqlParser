@@ -116,7 +116,7 @@ public class NestedBracketsPerformanceTest {
     public void testIssue856() throws JSQLParserException {
         String sql = "SELECT "
                 + buildRecursiveBracketExpression(
-                        "if(month(today()) = 3, sum(\"Table5\".\"Month 002\"), $1)", "0", 3)
+                        "if(month(today()) = 3, sum(\"Table5\".\"Month 002\"), $1)", "0", 10)
                 + " FROM mytbl";
         assertSqlCanBeParsedAndDeparsed(sql, true, parser -> parser.withTimeOut(60000));
     }
@@ -136,7 +136,26 @@ public class NestedBracketsPerformanceTest {
     @Test
     @Timeout(2000)
     public void testRecursiveBracketExpressionIssue1019_2() throws JSQLParserException {
-        doIncreaseOfParseTimeTesting("IF(1=1, $1, 2)", "1", 10);
+        doIncreaseOfParseTimeTesting("IF(1=1, $1, 2)", "1", 20);
+    }
+
+    @Test void testIssue2422() throws JSQLParserException {
+        String sqlStr =
+                "SELECT\n"
+                + "\t\t\t\t  ((((position('-' IN (\n"
+                + "\t\t\t\t              CASE WHEN ((\n"
+                + "\t\t\t\t                CASE WHEN (5 < 0) THEN\n"
+                + "\t\t\t\t                  'yes'\n"
+                + "\t\t\t\t                ELSE\n"
+                + "\t\t\t\t                  'no'\n"
+                + "\t\t\t\t                END) = 'yes') THEN\n"
+                + "\t\t\t\t                SUBSTRING('2012-january-18', (((LENGTH('2012-january-18')) + (5)) + (1)), ABS((0) - (5)))\n"
+                + "\t\t\t\t              ELSE\n"
+                + "\t\t\t\t                SUBSTRING('2012-january-18', ((5) + (1)))\n"
+                + "\t\t\t\t              END)) - 1) + (1)) - (5)) + (0))\n"
+                + "\t\t\t\tFROM\n"
+                + "\t\t\t\t  testtable";
+        assertSqlCanBeParsedAndDeparsed(sqlStr);
     }
 
     @Test
