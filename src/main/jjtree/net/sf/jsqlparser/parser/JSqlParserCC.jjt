@@ -8381,9 +8381,7 @@ JsonFunction.JsonOnResponseBehavior JsonQueryOnResponseBehavior() : {
         ]
     )
     {
-        if (behavior != null) {
-            return behavior;
-        }
+        return behavior;
     }
 }
 
@@ -9683,6 +9681,13 @@ JsonTableFunction.JsonTableColumnDefinition JsonTableColumnDefinition() : {
                 // Very ugly: ColDataType can consume an IDENTIFIER, which is fine, but we don't want it to
                 // consume an ALLOW or DISALLOW because that's a keyword for Oracle in this place.
                 // So we make a LOOKAHEAD on ColDataType, BUT we exclude the two cases for the IDENTIFIER
+
+                /*
+                [ ColDataType ]
+                [ FORMAT JSON ]
+                [ (ALLOW | DISALLOW) SCALARS ]
+                 */
+
                 LOOKAHEAD(
                     ColDataType(),
                         { !(getToken(1).kind == S_IDENTIFIER && (
@@ -9706,7 +9711,7 @@ JsonTableFunction.JsonTableColumnDefinition JsonTableColumnDefinition() : {
             ]
             [ <K_EXISTS> { valueColumnDefinition.setExistsKeyword(true); } ]
             // In Oracle, the wrapper clause comes before the PATH expression
-            [ wrapperClause = JsonTableWrapperClause(true) { valueColumnDefinition.setWrapperClause(wrapperClause); } ]
+            [ LOOKAHEAD(2) wrapperClause = JsonTableWrapperClause(true) { valueColumnDefinition.setWrapperClause(wrapperClause); } ]
             [ <K_PATH> expression = Expression() { valueColumnDefinition.setPathExpression(expression); } ]
             // In Truno the wrapper clause comes after the PATH expression
             [ wrapperClause = JsonTableWrapperClause(false) { valueColumnDefinition.setWrapperClause(wrapperClause); } ]
@@ -9870,9 +9875,7 @@ JsonTableFunction.JsonTableOnErrorClause JsonTableOnErrorClause(boolean beforeCo
     )
     <K_ON> <K_ERROR>
     {
-        if (onErrorClause.getType() != null) {
-            return onErrorClause;
-        }
+        return onErrorClause;
     }
 }
 
@@ -9895,9 +9898,7 @@ JsonTableFunction.JsonTableOnEmptyClause JsonTableOnEmptyClause() : {
     )
     <K_ON> <K_EMPTY>
     {
-        if (onEmptyClause.getType() != null) {
-            return onEmptyClause;
-        }
+        return onEmptyClause;
     }
 }
 
